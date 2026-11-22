@@ -148,7 +148,8 @@ namespace OpenUtau.App.Controls {
                 new FixOverlap(),
                 new BakePitch(),
                 new RandomizeTiming(),
-                new RandomizePhonemeOffset()
+                new RandomizePhonemeOffset(),
+                new BreathAtJoins()
             }.Select(edit => new MenuItemViewModel() {
                 Header = ThemeManager.GetString(edit.Name),
                 Command = noteBatchEditCommand,
@@ -218,6 +219,12 @@ namespace OpenUtau.App.Controls {
                 Header = ThemeManager.GetString("pianoroll.menu.notes.randomizetuning"),
                 Command = ReactiveCommand.Create(() => {
                     RandomizeTuning();
+                })
+            });
+            ViewModel.NoteBatchEdits.Add(new MenuItemViewModel() {
+                Header = ThemeManager.GetString("pianoroll.menu.notes.autopitch"),
+                Command = ReactiveCommand.Create(() => {
+                    AutoPitchDialog();
                 })
             });
             ViewModel.NoteBatchEdits.Add(new MenuItemViewModel() {
@@ -534,6 +541,21 @@ namespace OpenUtau.App.Controls {
             }
             var edit = new QuantizeNotes(notesVM.Project.resolution * 4 / notesVM.SnapDiv);
             edit.Run(notesVM.Project, notesVM.Part, notesVM.Selection.ToList(), DocManager.Inst);
+        }
+
+        /// <summary>自动音高：参数按 SynthV 工程实测拟合，一键生成，不弹任何设置。</summary>
+        void AutoPitchDialog() {
+            var notesVM = ViewModel.NotesViewModel;
+            if (notesVM.Part == null) {
+                return;
+            }
+            try {
+                var edit = new Core.Editing.AutoPitch();
+                edit.Run(notesVM.Project, notesVM.Part, notesVM.Selection.ToList(), DocManager.Inst);
+            } catch (Exception e) {
+                var customEx = new MessageCustomizableException("Failed to run editing macro", "<translate:errors.failed.runeditingmacro>", e);
+                DocManager.Inst.ExecuteCmd(new ErrorMessageNotification(customEx));
+            }
         }
 
         void RandomizeTuning() {

@@ -341,3 +341,7 @@ appcast.*.xml
 .vscode/
 Microsoft.AI.DirectML
 tmp/
+
+# 自动音高开发用的采样数据（源自第三方歌曲工程，不随代码发布）
+svp_notes.json
+*.svp

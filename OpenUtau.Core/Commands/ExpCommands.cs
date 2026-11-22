@@ -476,6 +476,10 @@ namespace OpenUtau.Core {
                     curve = new UCurve(descriptor);
                     Part.curves.Add(curve);
                 }
+                // 空数据直接返回：下面要取 xs[0] / xs.Last()，空数组会抛 ArgumentOutOfRangeException。
+                if (this.xs.Length == 0 || this.ys.Length == 0) {
+                    return;
+                }
 
                 var xs = this.xs.ToList();
                 var ys = this.ys.ToList();
