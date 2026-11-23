@@ -63,6 +63,11 @@ namespace OpenUtau.Core.Editing {
                         new int[0], new int[0]));
                 }
             }
+            // 气声点整段累积，循环结束后一次性写入 brec。
+            // 不能每个音符各写一次：brec 是 part 级曲线，每次写都会覆盖整条，
+            // 后一个音符会把前一个音符的气声抹掉。
+            var brecXs = new List<int>();
+            var brecYs = new List<int>();
             for (int i = 0; i < notes.Count; i++) {
                 var note = notes[i];
                 var prev = i > 0 ? notes[i - 1] : null;
@@ -233,6 +238,54 @@ namespace OpenUtau.Core.Editing {
                     data = points,
                     snapFirst = false,
                 }));
+                // 气声：从 .svp 导出的独立气声轨与干声轨实测得到。
+                // 把两轨按 12ms 窗求 RMS，算「气声/干声」比值随音符进度的走向（63 个连音段、300+ 音符）：
+                //   5%~63%   比值 0.95~1.01  → 平稳（气声恒定垫在底下，约 -18.7 dB）
+                //   73%      1.05
+                //   78%      1.20
+                //   84%      1.84   ← 上冲
+                //   89%      1.73
+                // 所以形状是：全程铺一层薄气声，末尾 20% 抬到约 1.9 倍。
+                // brec 是 part 级曲线、范围 -100~100、0 为默认。
+                // 只给「后面真接了休止」的音符写：连音时下一音马上接上，加气声反而发糊。
+                if (!linkNext && durMs >= 120) {
+                    double peak = Math.Clamp(18 + durMs / 40.0, 18, 45) * strength;
+                    double baseC = peak * 0.45;      // 中段铺底量
+                    double msPerTick = TickToMs(project, part, note.duration) / Math.Max(note.duration, 1);
+                    // 起点先压到 0，避免和上一个音符的曲线接成台阶
+                    brecXs.Add(note.position);
+                    brecYs.Add(0);
+                    int startTick = note.position + (int)Math.Round(durMs * 0.10 / msPerTick);
+                    brecXs.Add(startTick);
+                    brecYs.Add((int)Math.Round(baseC));
+                    // 末尾抬升：0.72~0.95 之间平滑爬到 peak
+                    for (double ct = durMs * 0.72; ct <= durMs - 1; ct += 20) {
+                        double p = ct / durMs;
+                        double w = Smooth(Math.Clamp((p - 0.72) / 0.23, 0, 1));
+                        brecXs.Add(note.position + (int)Math.Round(ct / msPerTick));
+                        brecYs.Add((int)Math.Round(baseC + (peak - baseC) * w));
+                    }
+                    // 末尾收在峰值的七成，留一点回落，不要停在最高点
+                    brecXs.Add(note.End);
+                    brecYs.Add((int)Math.Round(baseC + (peak - baseC) * 0.75));
+                }
+            }
+            // 气声统一写入：整条 brec 一次成型。
+            // 先按 x 排序并去重，同位置只留最后一个（后写的音符优先）。
+            if (brecXs.Count > 0) {
+                var merged = brecXs
+                    .Select((x, idx) => (x, y: brecYs[idx]))
+                    .GroupBy(p => p.x)
+                    .Select(g => g.Last())
+                    .OrderBy(p => p.x)
+                    .ToList();
+                var oldCurve = part.curves.FirstOrDefault(c => c.abbr == Format.Ustx.BREC);
+                docManager.ExecuteCmd(new OpenUtau.Core.MergedSetCurveCommand(
+                    project, part, Format.Ustx.BREC,
+                    oldCurve?.xs.ToArray() ?? new int[0],
+                    oldCurve?.ys.ToArray() ?? new int[0],
+                    merged.Select(p => p.x).ToArray(),
+                    merged.Select(p => p.y).ToArray()));
             }
             docManager.EndUndoGroup();
         }
