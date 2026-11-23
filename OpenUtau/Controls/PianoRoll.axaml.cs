@@ -228,6 +228,13 @@ namespace OpenUtau.App.Controls {
                 })
             });
             ViewModel.NoteBatchEdits.Add(new MenuItemViewModel() {
+                Header = ThemeManager.GetString("pianoroll.menu.notes.autopitchauto"),
+                Command = ReactiveCommand.Create(() => {
+                    Core.Util.Preferences.Default.AutoPitchAuto = !Core.Util.Preferences.Default.AutoPitchAuto;
+                    Core.Util.Preferences.Save();
+                })
+            });
+            ViewModel.NoteBatchEdits.Add(new MenuItemViewModel() {
                 Header = ThemeManager.GetString("pianoroll.menu.notes.lengthencrossfade"),
                 Command = ReactiveCommand.Create(() => {
                     LengthenCrossfade();

@@ -242,6 +242,8 @@ namespace OpenUtau.Core.Util {
             /// <summary>Legacy; migrated to <see cref="RealTimePitchMode"/> on load.</summary>
             public bool RealTimePitchGeneration = false;
             public int RealTimePitchMode = (int)LivePitchMode.Off;
+            /// <summary>自动音高（自动版）：歌词音素化完成后自动生成音高曲线。默认关闭。</summary>
+            public bool AutoPitchAuto = false;
             public bool ShowVibrato = true;
             public bool ShowPitch = true;
             public bool ShowFinalPitch = true;

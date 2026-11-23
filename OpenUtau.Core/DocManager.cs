@@ -103,6 +103,7 @@ namespace OpenUtau.Core {
             // without one, parts build their phrases inline.
             new Pipeline.PhraseSourceBuilder(mainScheduler);
             RealTimePitchGenerationService.Inst.Initialize();
+            AutoPitchAutoService.Inst.Initialize();
         }
 
         public void SearchAllLegacyPlugins() {
